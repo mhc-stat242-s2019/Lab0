@@ -4,8 +4,11 @@ author: "Your Name Here"
 output: pdf_document
 ---
 
+## Goals
 
-## R Markdown
+Your goal is to get some first experience reading through R code.  I am not asking you to write any R code today.  I just want you to have a first look at it for now.  
+
+## Part 1: R Markdown
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com> and <https://www.rstudio.com/wp-content/uploads/2016/03/rmarkdown-cheatsheet-2.0.pdf>.
 
@@ -28,9 +31,9 @@ The second two of these approaches will send commands to your Console, at the bo
 
 Try out all three of those approaches with the example code chunk above.
 
-## Loading Packages
+## Part 2: Loading Packages
 
-R comes with a decent amount of built-in functionality, but to do anything useful you will need to load *packages* that contain additional functionality.  You load packages with the `library` command.  Here we will load 3 packages with functionality you will need for this lab: mosaic, dplyr, and ggplot2.  Run the code chunk below to load these packages.
+R comes with a decent amount of built-in functionality, but to do anything useful you will need to load *packages* that contain additional functionality.  You load packages with the `library` command.  For this lab, we will need 3 packages that add extra functionality to R: mosaic, dplyr, and ggplot2.  Calls to load these packages are in the code chunk below.  Go ahead and run this code chunk now.
 
 ```{r}
 library(mosaic)
@@ -38,35 +41,102 @@ library(dplyr)
 library(ggplot2)
 ```
 
-## Read in the data and take a first look
+## Part 3: Read in the data and take a first look
 
-The following R code reads in the data set from the creativity study.  It then uses the `head` function to look at the first few rows of the data.  Run that code chunk now and look at the results.
+The following R code reads in the data set from the creativity study, and stores it in a data frame called creativity.  Think of a data frame as R's way of representing a spreadsheet - it's the most common way of storing a data set in R.  The original spreadsheet is stored on my website in a file called a csv file (csv stands for comma separated values).  To read in csv files, we can use a function called read.csv.  We have to give the data frame a name so that we can work with it later.  Here I have called it creativity.  The arrow pointing to the left <- says to store the results of read.csv in the object named on the left side.
+
+Run the code below now to read in the data set:
 
 ```{r}
 creativity <- read.csv("http://www.evanlray.com/data/sleuth3/case0101_creativity.csv")
+```
+
+After reading in the data set, you will see the "creativity" data set listed in the Global Environment pane in the top right panel of RStudio.  If you click on that, a display of the data will open up.  You can look at the data set there, and then switch back over to this lab.
+
+We can also look at the first few rows of a data frame (so, the first few observational units) with the `head` function.  Run the code below:
+
+```{r}
 head(creativity)
 ```
 
-We can find out the number of rows (observational units) and columns (variables) in the data set with the `dim` command:
+#### Check your understanding: What was the creativity score for the 4th person in the data set?  What treatment were they assigned to?
+
+
+We can find out the number of rows (observational units) and columns (variables) in the data set with the `dim` command (dim is short for "dimensions").
 
 ```{r}
 dim(creativity)
 ```
 
-We see that we have data for 47 observational units and 2 variables.
+#### Check your understanding: How many observational units and variables are in the data set?
 
-## Repeat the simulation many times
 
-The code below repeats the random assignment to the intrinsic and extrinsic groups 1000 times, and calculates the difference in group means for each of those 1000 simulated samples.  The results are stored in a new data frame called `simulation_results`.  Don't worry if you don't understand how this code works for now.  We will break down the pieces and discuss them gradually over the course of the semester.
+## Part 4: Do one simulation
+
+We are going to look at code now to see how you could use R to simulate the process of assigning the subjects to different treatments.
+
+The first step will be to take our creativity data set and modify it by shuffling the treatment each subject is assigned to.  The R code below does this step and shows the first few rows of the results.  If you run this code a few times, you will see that each time, the subjects' scores are the same, but their treatments are different.
+
+```{r}
+creativity_shuffled_treatments <- creativity %>%
+    mutate(
+      Treatment = shuffle(Treatment)
+    )
+
+head(creativity_shuffled_treatments)
+```
+
+How did this work?  Some parts of the commands above might look familiar.  We have created a new data frame with the beginning of the line, `creativity_shuffled_treatments <- `.  The stuff to the right of the arrow says how to calculate what goes in the new data frame.  The last line is also familiar: it displays the first few rows of this new data frame.
+
+The things that are new are the pipe, `%>%`, and the `mutate` command.  I read the pipe (`%>%`) as "and then".  So, I might read `creativity %>%` as "take the creativity data frame and then...".  The `mutate` function modifies a variable in a data frame or creates a new variable in the data frame.  In this case, we are modifying the `Treatment` variable, setting it equal to a shuffled version of the original `Treatment` variable.  Note that the original `creativity` data frame is not updated - our new shuffled version is just stored in the new `creativity_shuffled_treatment` data frame.
+
+The next thing we need to do is to calculate the mean `Score` within each treatment group, based on our new shuffled data frame.  This can be accomplished as follows - run the code below to see the results:
+
+```{r}
+shuffled_group_means <- creativity_shuffled_treatments %>%
+  group_by(Treatment) %>%
+  summarize(
+    mean_score = mean(Score)
+  )
+
+shuffled_group_means
+```
+
+The result of this is a new data frame, this time called `shuffled_group_means`.  The new data frame has two rows, one for each treatment group, and two variables: the treatment group and the mean score for participants in each treatment group.  Here's a breakdown of the code above:
+
+ * As before, I read the first part of the calculation, `creativity_shuffled_treatments %>%` as "take the creativity_shuffled_treatments data frame and then..."
+ * In the second line, we group the data frame by the treatment each subject was assigned to.  This grouping means that any later calculations will be done separately for the Extrinisc group and for the Intrinsic group.  The pipe at the end of the second line says "and then..."
+ * The next step is to `summarize` the data set (separately within each group) by calculating the mean score.  Similarly with the mutate command above, on the left hand side of the equals sign is the name of a variable in the output data frame; in this case, we have decided to call it `mean_score` (we could have chosen something else).  We calculate this as the `mean` of the `Score` variable in the original data frame.
+ * The last line prints out the resulting data frame with the group means.
+
+Our final operation will be to calculate the difference between the mean score for the Intrinsic group and the mean score for the Extrinsic group.  We can pull out the vector of mean scores for the two groups from the `shuffled_group_means` data frame as follows:
+
+```{r}
+shuffled_group_means$mean_score
+```
+
+This is a vector of two numbers, and our goal is to calculate the difference between the second mean score and the first.  We can do that as follows:
+
+```{r}
+shuffled_group_means$mean_score[2] - shuffled_group_means$mean_score[1]
+```
+
+## Part 5: Repeat the simulation many times
+
+The code below repeats the above process 1000 times (that's what `do(1000) *` accomplishes below: "do 1000 times").  The combined results across all 1000 repetitions are stored in a new data frame called `simulation_results`.
 
 ```{r}
 simulation_results <- do(1000) * {
-  shuffled_group_means <- creativity %>%
+  creativity_shuffled_treatments <- creativity %>%
     mutate(
       Treatment = shuffle(Treatment)
-    ) %>%
+    )
+
+  shuffled_group_means <- creativity_shuffled_treatments %>%
     group_by(Treatment) %>%
-    summarize(mean_score = mean(Score))
+    summarize(
+      mean_score = mean(Score)
+    )
   
   shuffled_group_means$mean_score[2] - shuffled_group_means$mean_score[1]
 }
@@ -75,7 +145,9 @@ head(simulation_results)
 dim(simulation_results)
 ```
 
-We can see that the new `simulation_results` data frame has 1000 rows (one for each of the 1000 simulated shuffles) and 1 variable (result - the difference in means for that simulated shuffle).
+We can see that the new `simulation_results` data frame has 1000 rows (one for each of the 1000 simulated shuffles) and 1 variable (`result`: the difference in means for that simulated shuffle).
+
+## Part 6: Visualize and think about the results
 
 Let's make a plot of these results.  This is an approximation of the sampling distribution of our sample statistic.
 
@@ -86,6 +158,13 @@ ggplot(data = simulation_results, mapping = aes(x = result)) +
   geom_vline(xintercept = -4.144)
 ```
 
+We will really talk through the code for making plots another day.  For now, here's a brief sketch of what's going on in the code above:
+
+ * `ggplot` says to start a new plot using the `g`rammar of `g`raphics.  The grammar of graphics is a way of thinking about how to build plots up in a systematic way using "grammatical" rules.
+ * In this case, the data we are plotting is the `simulation_results`.  The `result` variable in that data frame is going on the `x` axis of the plot.
+ * We are making a `histogram`
+ * We are also adding two `v`ertical `line`s to the plot, one at 4.144 and one at -4.144.
+
 How many of the simulated results were at least as extreme as the observed statistic from our actual sample?
 
 ```{r}
@@ -93,4 +172,4 @@ simulation_results %>% count(result >= 4.144)
 simulation_results %>% count(result <= -4.144)
 ```
 
-Find the proportion of simulated results that were at least as extreme as the observed value of the statistic from our actual sample.  This is a simulation-based p-value for the hypothesis test we set up.  What is the strength of evidence against the null hypothesis that is provided by the data?
+Find the proportion of the 1000 simulated results that were at least as extreme as the observed value of the statistic from our actual sample.  This is a simulation-based p-value for the hypothesis test we set up.  What is the strength of evidence against the null hypothesis that is provided by the data?
